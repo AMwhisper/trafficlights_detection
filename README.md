@@ -17,7 +17,9 @@ Two aspects set the project apart from typical approaches on this dataset:
 ```
 trafficlights_detection/
 ├── data/                        # LISA dataset (NOT tracked by git, download manually)
+├── cache/                       # cached features (NOT tracked by git, created automatically)
 ├── data_exploration.ipynb    # Exploratory data analysis
+├── baseline.ipynb            # Color histogram + logistic regression baseline
 ├── .gitignore
 └── README.md
 ```
@@ -52,7 +54,7 @@ data/
 
 The folder name and nesting matter: the notebooks look for annotations in `data/Annotations/Annotations/`. The `sample-*` folders are duplicates shipped with the dataset and are excluded by the code; you may delete them.
 
-`data/` is listed in `.gitignore`. Please do not commit any data files.
+`data/` and `cache/` are listed in `.gitignore`. Please do not commit any data or cached feature files.
 
 ## Environment Setup
 
@@ -61,7 +63,7 @@ We use a conda environment named `LISA` with Python 3.10.
 ```bash
 conda create -n LISA python=3.10
 conda activate LISA
-python -m pip install numpy pandas matplotlib opencv-python-headless ipykernel
+python -m pip install numpy pandas matplotlib opencv-python-headless scikit-learn ipykernel
 ```
 
 Notes:
@@ -93,6 +95,15 @@ Sections 1–5 only read the annotation CSVs and run in seconds. Sections 6–7 
 | 5. Temporal redundancy | Frames and boxes per clip; number of physical lights (tracks) and boxes per track. | Frame subsampling step |
 | 6. Visual inspection | Indexes all frames, crops lights with a 15% margin, and shows random samples per class (day, night, and the smallest 10% of boxes). | Label-noise estimate; size at which arrows become unreadable |
 | 7. Color feature preview | Hue histograms of lit pixels (high saturation and brightness) for go/stop/warning, day vs. night. | Hue encoding (red wraps around 0/179); evidence for GMMs |
+
+### `baseline.ipynb`
+
+The reference result that every later model must beat: a 35-dimensional color-only feature (18-bin hue histogram of lit pixels, saturation and value histograms, lit-pixel fraction) with class-weighted logistic regression.
+
+- Uses only the 18 training clips; the 4 test sequences are reserved for the final evaluation.
+- Grouped 6-fold cross-validation by clip (`StratifiedGroupKFold`), so no clip is split between training and validation.
+- Reports pooled out-of-fold macro-F1 and balanced accuracy, per-fold macro-F1 (mean ± std), a confusion matrix, and the error decomposition: color error, shape error, 3-class color accuracy, and red→green rate, for all data and for day/night separately.
+- Parameters at the top (`K_SUBSAMPLE`, `MIN_H`, `PATCH_WH`) should be updated from the EDA results. Features are cached in `cache/`, so later runs skip image loading; delete the cache file after changing these parameters.
 
 ## Project Timeline
 
